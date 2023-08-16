@@ -89,7 +89,7 @@ DAPACK: ; Disk Adress Packet Structure
 .lba        dd 0        ; lower 32-bits of 48-bit starting LBA 
             dd 0        ; upper 32-bits of 48-bit starting LBA (we won't need them)
 
-curLBA dd 0x0           ; holds current LBA (TODO set this to kernel position)
+curLBA dd 0x1           ; holds current LBA, MBR is at block 0, as we expect kernel to follow immediately after, we set it to 1
 
 TIMES 510 - ($ - $$) db 0	; fill the rest of sector with 0 ($ = pos beginning of line, $$ = beginning of current section, TIMES = assemble instruction N times)
 DW 0xAA55			; magic number
