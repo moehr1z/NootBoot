@@ -7,12 +7,49 @@
     call checkFuncs
 %endif
 
-call print
+;;; init regs and stuff
+cli
+mov sp, 0x7c00  ; init stack for our stuff, BIOS interrupts, ... 
+xor ax, ax       
+mov ds, ax      ; in real mode segment registers refer to segment base address not segment selector
+mov ss, ax
+
+;;; prepare kernel loading
+; the kernel is too large, so we need to switch to unreal mode to avoid the 64KiB segment limit
+; unreal mode allows us to still use BIOS functions, but address memory above 1MiB
+; also we need to activate the A20 gate
+
+;; activate A20 via BIOS 
+; (This is one of many methods, some of which may or may not be supported. Proper way would be to try all of them and see which works, we just pray this one does.)
+mov     ax, 2401h    
+int     15h
+jc      err
+
+;; enter unreal mode 
+; so basically what we do is: prepare GDT where DS limit is 4GiB -> enter protected mode -> set ds, this will update the descriptor cache -> switch back to real mode, in real mode the cache isn't filled with GDT entries (as there's none) but processor generates entries internally and not all fields are updated on segment register loads, especially not the limit.
+
+;enter protected mode
+lgdt [GDT_DESCRIPTOR]
+mov eax, cr0
+or al, 1        ; set protection enable bit 
+mov cr0, eax
+mov bx, 0x8     ; first descriptor
+mov ds, bx
+
+; go back to real mode
+and al, 0xfe
+mov cr0, eax    ; so toggle protection bit again
+
+xor ax, ax          ; restore real mode selectors
+mov ds, ax
+mov ax, 0x1000      ; this is segment where we want to store kernel to (so: beginning at 0x10000)
+mov es, ax
+
+sti
 jmp $
 
 diskRead:   ; read from disk, using LBA adressing
     ; .count = ax, .offset = bx, .segment = cx
-    ; has to be called from unreal mode or protected mode
     
     push edx    ; save edx
 
@@ -79,6 +116,22 @@ err:
 %ifdef DEBUG
     errStr db 'Ouch!', 0
 %endif
+
+GDT: ; temporary global descriptor table we need to avoid the 64KiB segment limit
+    dq 0x0  ; first entry always 0
+    ; data segment
+    dw 0xffff           ; limit 
+    dw 0x0              ; base 
+    db 0x0              ; base 
+    db 0b10010010       ; access byte
+    db 0b11001111       ; flags | limit 
+    db 0x0              ; base
+GDT_END: 
+
+GDT_DESCRIPTOR:    
+    dw GDT - GDT_END - 1; size
+    dd GDT              ; offset (linear address)
+
 
 DAPACK: ; Disk Adress Packet Structure
             db 0x10     ; size of packet (16 bytes)
