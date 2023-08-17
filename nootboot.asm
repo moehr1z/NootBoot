@@ -3,18 +3,15 @@
 [bits 16]   ;tell assembler this is 16 bit code
 [org 0x7c00] ; tell assembler where code will be in memory after it was loaded (BIOS will load boot sector into memory at this address)
 
-%ifdef DEBUG
-    call checkFuncs
-%endif
+;;; prepare kernel loading
 
-;;; init regs and stuff
+; init regs and stuff
 cli
 mov sp, 0x7c00  ; init stack for our stuff, BIOS interrupts, ... 
 xor ax, ax       
 mov ds, ax      ; in real mode segment registers refer to segment base address not segment selector
 mov ss, ax
 
-;;; prepare kernel loading
 ; the kernel is too large, so we need to switch to unreal mode to avoid the 64KiB segment limit
 ; unreal mode allows us to still use BIOS functions, but address memory above 1MiB
 ; also we need to activate the A20 gate
@@ -72,18 +69,6 @@ diskRead:   ; read from disk, using LBA adressing
 
     ret
     
-%ifdef DEBUG
-checkFuncs: ; functions to check if certain hardware features are available
-    checkFuncs.LBA: ; check if LBA adressing works
-        mov ah, 0x41
-        mov bx, 0x55aa
-        mov dl, 0x80
-        int 0x13
-        jc err
-    
-    ret
-%endif
-
 err: 
 %ifdef DEBUG
     mov si, errStr
