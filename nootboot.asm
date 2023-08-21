@@ -46,6 +46,42 @@ mov ax, 0x1000      ; this is segment where we want to store kernel to (so: begi
 mov es, ax
 
 sti
+
+;;; handle real mode kernel
+
+; load first sector (header)
+mov ax, 0x1
+xor bx, bx
+mov cx, es
+call diskRead
+
+mov al, [es:0x1f1]   ; setup_sects
+cmp al, 0x0
+jne cont
+mov ax, 0x4          ; if nr of sects = 0, actual default is 4 
+
+cont:
+
+; load the rest of the real mode part of the kernel
+mov bx, 512     ; already read one sector
+                ; cx wasn't changed
+call diskRead
+
+; fill header fields
+cmp word [0x206], 0x202 ; suppported boot protocol version >=2.02
+jb err
+
+mov byte [es:210], 0xff; type_of_loader (TODO undefined or minimal linux bootloader (needs ext_loader_type))
+mov byte [es:211], 0b10000001    ; loadflags
+mov word [es:0x224], 0xde00      ; heap_end_ptr (0xe000 - 0x0200)
+mov dword [es:0x228], 0x1e000    ; cmd_line_ptr (base_ptr + heap_end)
+; ramdisk fields we'll do later
+
+; copy cmd line
+mov si, [COMMANDLINE.config]
+mov di, 0xe000
+mov cx, [COMMANDLINE.length]
+rep movsb
 jmp $
 
 diskRead:   ; read from disk, using LBA adressing
@@ -131,6 +167,10 @@ DAPACK: ; Disk Adress Packet Structure
             dd 0        ; upper 32-bits of 48-bit starting LBA (we won't need them)
 
 curLBA dd 0x1           ; holds current LBA, MBR is at block 0, as we expect kernel to follow immediately after, we set it to 1
+
+COMMANDLINE:   
+.config     db "auto",0
+.length     db $-COMMANDLINE.config
 
 TIMES 510 - ($ - $$) db 0	; fill the rest of sector with 0 ($ = pos beginning of line, $$ = beginning of current section, TIMES = assemble instruction N times)
 DW 0xAA55			; magic number
