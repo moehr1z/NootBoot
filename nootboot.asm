@@ -37,8 +37,8 @@ mov ds, bx
 and al, 0xfe
 mov cr0, eax    ; so toggle protection bit again
 
-jmp .flushipfq    ; see https://stackoverflow.com/questions/76928196/does-the-cs-register-need-to-be-set-when-setting-up-unreal-mode
-.flushipfq
+jmp flushipfq    ; see https://stackoverflow.com/questions/76928196/does-the-cs-register-need-to-be-set-when-setting-up-unreal-mode
+flushipfq:
 
 xor ax, ax          ; restore real mode selectors
 mov ds, ax
