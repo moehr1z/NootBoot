@@ -10,7 +10,7 @@ INITRD="initrd"
 INITRD_SIZE=$(stat -c %s $INITRD)
 INITRD_PAD=$((512 - ($INITRD_SIZE % 512)))  # padding needed for sector alignement
 
-nasm nootboot.asm -o $OUTPUT
+nasm nootboot.asm -o $OUTPUT -D INITRDSIZE=$INITRD_SIZE
 
 # concatenate kernel and fill up to whole sector
 cat "$KERNEL" >> "$OUTPUT"
