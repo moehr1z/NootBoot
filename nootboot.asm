@@ -88,6 +88,15 @@ mov edx, [es:0x1f4]     ; syssize
 shl edx, 4   ; "units of 16-byte paragraphs" = begins at multiple of 16 bytes
 call highLoader
 
+;;; load the initrd
+mov eax, [HIGHADDR]
+mov dword [es:0x218], eax        ; ramdisk_image
+mov dword [es:0x21c], INITRDSIZE ; ramdisk_size (INITRDSIZE comes from the build script)
+
+mov edx, INITRDSIZE
+call highLoader
+
+
 jmp $
 
 highLoader:    ; read from disk to a high (> 1MB) address
