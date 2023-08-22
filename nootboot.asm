@@ -82,6 +82,12 @@ mov si, [COMMANDLINE.config]
 mov di, 0xe000
 mov cx, [COMMANDLINE.length]
 rep movsb
+
+;;; load the protected mode kernel
+mov edx, [es:0x1f4]     ; syssize
+shl edx, 4   ; "units of 16-byte paragraphs" = begins at multiple of 16 bytes
+call highLoader
+
 jmp $
 
 highLoader:    ; read from disk to a high (> 1MB) address
