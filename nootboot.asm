@@ -1,5 +1,32 @@
 %define DEBUG
 
+; we follow the suggested memory layout (https://www.kernel.org/doc/Documentation/x86/boot.txt)
+;         ~                        ~
+;         |  Protected-mode kernel |
+; 100000  +------------------------+    (1MiB)
+;         |  I/O memory hole	   |
+; 0A0000  +------------------------+    (640KiB)
+;         |  Reserved for BIOS	   |	Leave as much as possible unused
+;         ~                        ~
+;         |  Command line		   |	
+; X+10000 +------------------------+
+;         |  Stack/heap		       |	For use by the kernel real-mode code.
+; X+08000 +------------------------+	
+;         |  Kernel setup		   |	The kernel real-mode code.
+;         |  Kernel boot sector	   |	The kernel legacy boot sector.
+; X       +------------------------+
+;         |  Boot loader		   |	<- Boot sector entry point 0000:7C00
+; 001000  +------------------------+
+;         |  Reserved for MBR/BIOS |
+; 000800  +------------------------+
+;         |  Typically used by MBR |
+; 000600  +------------------------+ 
+;         |  BIOS use only	       |
+; 000000  +------------------------+
+;
+; where X = 10000
+
+; we start in real mode, so 16 bit, no paging, only 1 MiB addressable, ...
 [bits 16]   ;tell assembler this is 16 bit code
 [org 0x7c00] ; tell assembler where code will be in memory after it was loaded (BIOS will load boot sector into memory at this address)
 
@@ -38,7 +65,7 @@ and al, 0xfe
 mov cr0, eax    ; so toggle protection bit again
 
 jmp .flushipfq    ; see https://stackoverflow.com/questions/76928196/does-the-cs-register-need-to-be-set-when-setting-up-unreal-mode
-.flushipfq
+.flushipfq:
 
 xor ax, ax          ; restore real mode selectors
 mov ds, ax
