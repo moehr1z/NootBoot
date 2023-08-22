@@ -84,6 +84,51 @@ mov cx, [COMMANDLINE.length]
 rep movsb
 jmp $
 
+highLoader:    ; read from disk to a high (> 1MB) address
+    ; bytes to load = dx
+    .loop: 
+        cmp edx, 127 * 512  ; less than 64KiB (BIOS still bound by 64KiB segment limit)
+        jl highLoader.rest
+       
+        ; load + move high
+        mov ax, 127
+        xor bx, bx          
+        mov cx, 0x2000
+        call diskRead
+        call highMove
+
+        sub edx, 127 * 512                
+        jmp highLoader.loop
+
+    .rest:
+        shr edx, 9      ; divide by 512, get count
+        inc edx         ; increase in case no clean divide, if there was a clean divide we load sone additional, which isn't problematic
+        mov ax, dx        
+        xor bx, bx
+        mov cx, 0x2000
+        call diskRead
+        call highMove
+   
+        ret
+       
+highMove:
+        mov esi, 0x20000 
+        mov edi, [HIGHADDR]     
+        mov ecx, 512 * 127  ; always copy this much, last copy will probably contain some junk but that's no problem
+    .loop:
+        ; rep movsd would be nice, but we haven't maxed the limit of es, so I do it this way...
+        mov eax, [ds:esi] 
+        mov [ds:edi], eax
+
+        add esi, 4  
+        add edi, 4
+        sub ecx, 4
+
+        jnz highMove.loop
+        mov [HIGHADDR], edi
+        ret
+
+
 diskRead:   ; read from disk, using LBA adressing
     ; .count = ax, .offset = bx, .segment = cx
     
@@ -171,6 +216,8 @@ curLBA dd 0x1           ; holds current LBA, MBR is at block 0, as we expect ker
 COMMANDLINE:   
 .config     db "auto",0
 .length     db $-COMMANDLINE.config
+
+HIGHADDR: dd 0x100000
 
 TIMES 510 - ($ - $$) db 0	; fill the rest of sector with 0 ($ = pos beginning of line, $$ = beginning of current section, TIMES = assemble instruction N times)
 DW 0xAA55			; magic number
