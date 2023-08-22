@@ -37,8 +37,8 @@ mov ds, bx
 and al, 0xfe
 mov cr0, eax    ; so toggle protection bit again
 
-jmp flushipfq    ; see https://stackoverflow.com/questions/76928196/does-the-cs-register-need-to-be-set-when-setting-up-unreal-mode
-flushipfq:
+jmp .flushipfq    ; see https://stackoverflow.com/questions/76928196/does-the-cs-register-need-to-be-set-when-setting-up-unreal-mode
+.flushipfq
 
 xor ax, ax          ; restore real mode selectors
 mov ds, ax
@@ -64,14 +64,14 @@ cont:
 
 ; load the rest of the real mode part of the kernel
 mov bx, 512     ; already read one sector
-                ; cx wasn't changed
+mov cx, es
 call diskRead
 
 ; fill header fields
 cmp word [0x206], 0x202 ; suppported boot protocol version >=2.02
 jb err
 
-mov byte [es:210], 0xff; type_of_loader (TODO undefined or minimal linux bootloader (needs ext_loader_type))
+mov byte [es:210], 0xff; type_of_loader 
 mov byte [es:211], 0b10000001    ; loadflags
 mov word [es:0x224], 0xde00      ; heap_end_ptr (0xe000 - 0x0200)
 mov dword [es:0x228], 0x1e000    ; cmd_line_ptr (base_ptr + heap_end)
