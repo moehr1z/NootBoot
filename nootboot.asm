@@ -96,6 +96,16 @@ mov dword [es:0x21c], INITRDSIZE ; ramdisk_size (INITRDSIZE comes from the build
 mov edx, INITRDSIZE
 call highLoader
 
+;;; call the kernel
+cli
+mov ax, 0x1000
+mov fs, ax
+mov gs, ax
+mov ds, ax
+mov es, ax
+mov ss, ax
+mov sp, 0xe000
+jmp 0x1020:0
 
 jmp $
 
